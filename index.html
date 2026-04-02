@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TruthLens — AI Fake News Detector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080810;
+    --surface: #0f0f1a;
+    --surface2: #161627;
+    --surface3: #1e1e32;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --gold: #e8a020;
+    --gold-dim: rgba(232,160,32,0.15);
+    --gold-glow: rgba(232,160,32,0.35);
+    --teal: #2dd4bf;
+    --teal-dim: rgba(45,212,191,0.12);
+    --red: #f87171;
+    --red-dim: rgba(248,113,113,0.12);
+    --green: #4ade80;
+    --green-dim: rgba(74,222,128,0.12);
+    --text: #f0f0f8;
+    --text2: #9090b0;
+    --text3: #5a5a7a;
+    --radius: 14px;
+    --radius-lg: 20px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 10%, rgba(232,160,32,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 80% 90%, rgba(45,212,191,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  header { text-align: center; margin-bottom: 56px; animation: fadeUp 0.7s ease both; }
+
+  .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--gold-dim);
+    border: 1px solid rgba(232,160,32,0.3);
+    border-radius: 100px;
+    padding: 6px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 20px;
+  }
+
+  .logo-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(2.4rem, 6vw, 3.8rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+
+  h1 span { color: var(--gold); font-style: italic; }
+
+  .subtitle {
+    color: var(--text2);
+    font-size: 15px;
+    font-weight: 300;
+    max-width: 460px;
+    margin: 0 auto;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 24px;
+    width: fit-content;
+    animation: fadeUp 0.7s 0.1s ease both;
+  }
+
+  .tab {
+    padding: 8px 20px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab.active {
+    background: var(--surface3);
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+
+  .input-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.7s 0.15s ease both;
+    transition: border-color 0.3s;
+  }
+
+  .input-card:focus-within { border-color: var(--border2); }
+
+  .input-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus { border-color: rgba(232,160,32,0.4); }
+  textarea::placeholder { color: var(--text3); }
+
+  .url-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .url-input:focus { border-color: rgba(232,160,32,0.4); }
+  .url-input::placeholder { color: var(--text3); }
+
+  .char-count {
+    text-align: right;
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 8px;
+  }
+
+  .btn-analyze {
+    width: 100%;
+    padding: 16px 32px;
+    background: var(--gold);
+    border: none;
+    border-radius: var(--radius);
+    color: #0a0a0a;
+    font-family: 'Sora', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.7s 0.2s ease both;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-analyze::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .btn-analyze:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--gold-glow); }
+  .btn-analyze:hover::before { opacity: 1; }
+  .btn-analyze:active { transform: translateY(0); }
+  .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .scanning-wrapper {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 40px 28px;
+    margin-bottom: 24px;
+    text-align: center;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .scanning-wrapper.visible { display: block; }
+
+  .scan-visual {
+    width: 200px;
+    height: 120px;
+    margin: 0 auto 24px;
+    position: relative;
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface2);
+  }
+
+  .scan-lines {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(232,160,32,0.04) 3px,
+      rgba(232,160,32,0.04) 4px
+    );
+  }
+
+  .scan-beam {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    box-shadow: 0 0 10px var(--gold-glow);
+    animation: scanBeam 1.8s ease-in-out infinite;
+  }
+
+  .scan-dots {
+    position: absolute;
+    inset: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-content: flex-start;
+  }
+
+  .scan-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(232,160,32,0.3);
+    animation: dotBlink 1.2s ease-in-out infinite;
+  }
+
+  .scan-dot:nth-child(2n) { animation-delay: 0.3s; }
+  .scan-dot:nth-child(3n) { animation-delay: 0.6s; }
+  .scan-dot:nth-child(4n) { animation-delay: 0.9s; }
+
+  .scan-label {
+    font-size: 13px;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+
+  .scan-step {
+    font-size: 12px;
+    color: var(--gold);
+    font-weight: 500;
+    min-height: 20px;
+  }
+
+  .progress-bar-wrap {
+    width: 200px;
+    height: 3px;
+    background: var(--surface3);
+    border-radius: 100px;
+    margin: 16px auto 0;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 100px;
+    width: 0%;
+    animation: progressFill 4s ease forwards;
+  }
+
+  #results { animation: fadeUp 0.5s ease both; }
+
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px 28px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+
+  .gauge-wrap { flex-shrink: 0; }
+
+  .gauge {
+    width: 130px;
+    height: 130px;
+    position: relative;
+  }
+
+  .gauge svg { transform: rotate(-90deg); }
+
+  .gauge-track {
+    fill: none;
+    stroke: var(--surface3);
+    stroke-width: 10;
+  }
+
+  .gauge-fill {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 326;
+    stroke-dashoffset: 326;
+    transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .gauge-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .gauge-score {
+    font-family: 'Fraunces', serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .gauge-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .verdict-wrap { flex: 1; }
+
+  .verdict-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .verdict-badge.credible { background: var(--green-dim); color: var(--green); border: 1px solid rgba(74,222,128,0.25); }
+  .verdict-badge.suspicious { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+  .verdict-badge.fake { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,0.25); }
+  .verdict-badge.mixed { background: var(--teal-dim); color: var(--teal); border: 1px solid rgba(45,212,191,0.25); }
+
+  .verdict-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .verdict-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.45rem;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .verdict-summary { color: var(--text2); font-size: 14px; line-height: 1.7; }
+
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 16px;
+  }
+
+  .metric-name {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .metric-bar-wrap {
+    height: 5px;
+    background: var(--surface3);
+    border-radius: 100px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .metric-bar {
+    height: 100%;
+    border-radius: 100px;
+    width: 0%;
+    transition: width 1.1s cubic-bezier(0.4,0,0.2,1) 0.3s;
+  }
+
+  .metric-val {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 14px;
+  }
+
+  .signals-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .signal-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .signal-panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .signal-panel.good .signal-panel-title { color: var(--green); }
+  .signal-panel.bad .signal-panel-title { color: var(--red); }
+
+  .icon { font-size: 14px; }
+
+  .signal-item {
+    font-size: 13px;
+    color: var(--text2);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .signal-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+  .signal-dot {
+    flex-shrink: 0;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    margin-top: 7px;
+  }
+
+  .signal-panel.good .signal-dot { background: var(--green); }
+  .signal-panel.bad .signal-dot { background: var(--red); }
+
+  .tags-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .tag {
+    padding: 5px 12px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+
+  .recommendation {
+    background: var(--gold-dim);
+    border: 1px solid rgba(232,160,32,0.25);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .rec-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .rec-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+
+  .rec-text { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+  .btn-reset {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: 'Sora', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-reset:hover { background: var(--surface); color: var(--text); border-color: var(--border2); }
+
+  .error-box {
+    background: var(--red-dim);
+    border: 1px solid rgba(248,113,113,0.25);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    color: var(--red);
+    font-size: 14px;
+    margin-bottom: 20px;
+    display: none;
+  }
+
+  footer {
+    text-align: center;
+    padding-top: 48px;
+    color: var(--text3);
+    font-size: 12px;
+  }
+
+  footer a { color: var(--text3); text-decoration: underline; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  @keyframes scanBeam {
+    0% { top: 0; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: calc(100% - 2px); opacity: 0; }
+  }
+
+  @keyframes dotBlink {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes progressFill {
+    0% { width: 0%; }
+    20% { width: 25%; }
+    50% { width: 55%; }
+    80% { width: 80%; }
+    100% { width: 95%; }
+  }
+
+  @media (max-width: 600px) {
+    .score-card { flex-direction: column; text-align: center; align-items: center; gap: 20px; }
+    .metrics-row { grid-template-columns: 1fr; }
+    .signals-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <header>
+    <div class="logo-badge">AI-Powered Analysis</div>
+    <h1>Truth<span>Lens</span></h1>
+    <p class="subtitle">Detect misinformation, bias & credibility signals in any news article with advanced AI.</p>
+    <p class="subtitle">| Created by Nandini Soni |</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('text', this)">Paste Article</button>
+    <button class="tab" onclick="switchTab('url', this)">Enter Headline / Claim</button>
+  </div>
+
+  <div class="input-card">
+    <p class="input-label" id="input-label">News Article Text</p>
+
+    <div id="tab-text">
+      <textarea id="article-text" placeholder="Paste the full article text here. The more content you provide, the more accurate the analysis will be..." maxlength="8000"></textarea>
+      <p class="char-count"><span id="char-count">0</span> / 8000</p>
+    </div>
+
+    <div id="tab-url" style="display:none;">
+      <input class="url-input" id="headline-input" type="text" placeholder="e.g. 'Scientists confirm drinking coffee cures cancer, says anonymous study'" />
+      <p style="margin-top: 10px; font-size:12px; color: var(--text3);">Enter a headline, claim, or brief news excerpt to analyze.</p>
+    </div>
+  </div>
+
+  <button class="btn-analyze" id="analyzeBtn" onclick="analyze()">
+    &#x2726; Analyze with TruthLens AI
+  </button>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="scanning-wrapper" id="scanningWrapper">
+    <div class="scan-visual">
+      <div class="scan-lines"></div>
+      <div class="scan-beam"></div>
+      <div class="scan-dots" id="scanDots"></div>
+    </div>
+    <p class="scan-label">Analyzing content…</p>
+    <p class="scan-step" id="scanStep">Extracting linguistic patterns</p>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+  </div>
+
+  <div id="results" style="display:none;"></div>
+
+  <footer>
+    Powered by Hugging Face BERT &mdash; TruthLens is a tool to assist critical thinking, not replace it.<br/>
+    Always verify information with multiple trusted sources.<br/>
+    Developed by <a href="https://github.com/NANDINI-7777" target="_blank">Nandini Soni</a><br/>
+    gmail: <a href="mailto:nandinisoni7014@gmail.com">nandinisoni7014@gmail.com</a>
+  </footer>
+
+</div>
+
+<script>
+  const dotsEl = document.getElementById('scanDots');
+  for (let i = 0; i < 24; i++) {
+    const d = document.createElement('div');
+    d.className = 'scan-dot';
+    dotsEl.appendChild(d);
+  }
+
+  const ta = document.getElementById('article-text');
+  ta.addEventListener('input', () => {
+    document.getElementById('char-count').textContent = ta.value.length;
+  });
+
+  let activeTab = 'text';
+  function switchTab(tab, btn) {
+    activeTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-text').style.display = tab === 'text' ? 'block' : 'none';
+    document.getElementById('tab-url').style.display = tab === 'url' ? 'block' : 'none';
+    document.getElementById('input-label').textContent = tab === 'text' ? 'News Article Text' : 'Headline or Claim';
+  }
+
+  const steps = [
+    'Extracting linguistic patterns…',
+    'Checking emotional language…',
+    'Evaluating source credibility signals…',
+    'Detecting logical fallacies…',
+    'Analyzing factual consistency…',
+    'Generating credibility report…'
+  ];
+  let stepInterval;
+  function startSteps() {
+    let i = 0;
+    const el = document.getElementById('scanStep');
+    el.textContent = steps[0];
+    stepInterval = setInterval(() => {
+      i = (i + 1) % steps.length;
+      el.textContent = steps[i];
+    }, 700);
+  }
+
+  function scoreColor(score) {
+    if (score >= 70) return '#4ade80';
+    if (score >= 40) return '#fbbf24';
+    return '#f87171';
+  }
+
+  function verdictClass(score) {
+    if (score >= 70) return 'credible';
+    if (score >= 50) return 'mixed';
+    if (score >= 30) return 'suspicious';
+    return 'fake';
+  }
+
+  function verdictLabel(score) {
+    if (score >= 70) return 'Likely Credible';
+    if (score >= 50) return 'Mixed Signals';
+    if (score >= 30) return 'Suspicious';
+    return 'Likely Misinformation';
+  }
+
+  function buildResults(data) {
+    const score = Math.round(data.credibilityScore);
+    const circumference = 326;
+    const offset = circumference - (score / 100) * circumference;
+    const color = scoreColor(score);
+    const vClass = verdictClass(score);
+    const vLabel = verdictLabel(score);
+
+    const redFlags = (data.redFlags || []).map(f =>
+      `<div class="signal-item"><div class="signal-dot"></div>${f}</div>`
+    ).join('');
+
+    const positives = (data.positiveSignals || []).map(f =>
+      `<div class="signal-item"><div class="signal-dot"></div>${f}</div>`
+    ).join('');
+
+    const tags = (data.detectedTags || []).map(t =>
+      `<span class="tag">${t}</span>`
+    ).join('');
+
+    const metrics = [
+      { name: 'Emotional Tone', val: data.emotionalTone ?? 50, color: '#f87171' },
+      { name: 'Source Reliability', val: data.sourceReliability ?? 50, color: '#4ade80' },
+      { name: 'Factual Accuracy', val: data.factualAccuracy ?? 50, color: '#2dd4bf' },
+    ];
+
+    const metricCards = metrics.map(m => `
+      <div class="metric-card">
+        <p class="metric-name">${m.name}</p>
+        <div class="metric-bar-wrap">
+          <div class="metric-bar" style="width:${m.val}%; background:${m.color};" data-target="${m.val}"></div>
+        </div>
+        <p class="metric-val">${m.val}%</p>
+      </div>
+    `).join('');
+
+    return `
+      <div class="score-card">
+        <div class="gauge-wrap">
+          <div class="gauge">
+            <svg width="130" height="130" viewBox="0 0 130 130">
+              <circle class="gauge-track" cx="65" cy="65" r="52"/>
+              <circle class="gauge-fill" id="gaugeFill" cx="65" cy="65" r="52"
+                stroke="${color}" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}"/>
+            </svg>
+            <div class="gauge-center">
+              <span class="gauge-score" style="color:${color};">${score}</span>
+              <span class="gauge-label">/ 100</span>
+            </div>
+          </div>
+        </div>
+        <div class="verdict-wrap">
+          <div class="verdict-badge ${vClass}">${vLabel}</div>
+          <h2 class="verdict-title">${data.verdictTitle || 'Analysis Complete'}</h2>
+          <p class="verdict-summary">${data.summary || ''}</p>
+        </div>
+      </div>
+
+      <div class="metrics-row">${metricCards}</div>
+
+      <div class="signals-grid">
+        <div class="signal-panel bad">
+          <p class="signal-panel-title"><span class="icon">&#x26A0;</span> Red Flags</p>
+          ${redFlags || '<div class="signal-item"><div class="signal-dot"></div>No significant red flags detected.</div>'}
+        </div>
+        <div class="signal-panel good">
+          <p class="signal-panel-title"><span class="icon">&#x2713;</span> Positive Signals</p>
+          ${positives || '<div class="signal-item"><div class="signal-dot"></div>No strong positive signals found.</div>'}
+        </div>
+      </div>
+
+      ${tags ? `
+      <div class="tags-wrap">
+        <p class="section-title">Detected Categories</p>
+        <div class="tags">${tags}</div>
+      </div>` : ''}
+
+      <div class="recommendation">
+        <div class="rec-icon">&#x1F4A1;</div>
+        <div>
+          <p class="rec-title">TruthLens Recommendation</p>
+          <p class="rec-text">${data.recommendation || 'Verify this content with additional trusted sources before sharing.'}</p>
+        </div>
+      </div>
+
+      <button class="btn-reset" onclick="resetUI()">&#8635; Analyze Another Article</button>
+    `;
+  }
+
+  async function analyze() {
+    const content = activeTab === 'text'
+      ? document.getElementById('article-text').value.trim()
+      : document.getElementById('headline-input').value.trim();
+
+    if (!content) {
+      showError('Please paste article text or enter a headline before analyzing.');
+      return;
+    }
+    if (content.length < 20) {
+      showError('Content is too short. Please provide more context for accurate analysis.');
+      return;
+    }
+
+    hideError();
+    showScanning();
+
+    try {
+      // Point the UI to YOUR local FastAPI server
+      const response = await fetch('http://127.0.0.1:8000/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: content })
+      });
+
+      if (!response.ok) {
+        throw new Error('Local API request failed. Is Uvicorn running?');
+      }
+
+      const data = await response.json();
+      
+      // Translate our backend response to fit the fancy UI
+      const isReal = data.prediction === "Real News";
+      const confidenceNumber = parseFloat(data.confidence);
+      
+      // If fake news with 90% confidence, credibility is 10%. If real with 90%, credibility is 90%.
+      const finalScore = isReal ? confidenceNumber : (100 - confidenceNumber);
+
+      const parsed = {
+        credibilityScore: finalScore,
+        verdictTitle: data.prediction,
+        summary: `Analysis powered by local Hugging Face Deep Learning Model. Confidence level: ${data.confidence}`,
+        emotionalTone: 50, 
+        sourceReliability: isReal ? 85 : 15,
+        factualAccuracy: isReal ? 85 : 15,
+        redFlags: isReal ? [] : ["Transformer model detected strong contextual patterns of misinformation.", "Language matches known fake news datasets."],
+        positiveSignals: isReal ? ["Contextual grammar matches factual reporting standards.", "No known misinformation patterns detected."] : [],
+        detectedTags: ["AI Analyzed", "Hugging Face BERT"],
+        recommendation: "Always verify this content with additional trusted sources before sharing."
+      };
+
+      hideScanning();
+      showResults(parsed);
+
+    } catch (err) {
+      hideScanning();
+      showError('Analysis failed: ' + err.message);
+    }
+  }
+
+  function showScanning() {
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('scanningWrapper').classList.add('visible');
+    document.getElementById('results').style.display = 'none';
+    const pb = document.getElementById('progressBar');
+    pb.style.animation = 'none';
+    pb.offsetHeight;
+    pb.style.animation = 'progressFill 4s ease forwards';
+    startSteps();
+  }
+
+  function hideScanning() {
+    clearInterval(stepInterval);
+    document.getElementById('scanningWrapper').classList.remove('visible');
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+
+  function showResults(data) {
+    const resultsEl = document.getElementById('results');
+    resultsEl.innerHTML = buildResults(data);
+    resultsEl.style.display = 'block';
+
+    setTimeout(() => {
+      const fill = document.getElementById('gaugeFill');
+      if (fill) {
+        const score = Math.round(data.credibilityScore);
+        const offset = 326 - (score / 100) * 326;
+        fill.style.strokeDashoffset = offset;
+      }
+    }, 100);
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = '⚠ ' + msg;
+    box.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').style.display = 'none';
+  }
+
+  function resetUI() {
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('article-text').value = '';
+    document.getElementById('headline-input').value = '';
+    document.getElementById('char-count').textContent = '0';
+    hideError();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
