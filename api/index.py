@@ -16,12 +16,14 @@ app.add_middleware(
 class NewsInput(BaseModel):
     text: str
 
-@app.post("/predict")
+@app.post("/api/predict")
+@app.post("/predict")  # Retain backward compatibility for local uvicorn runs
 def predict_news(news: NewsInput):
     # Hugging Face Inference API Model URL
     model_url = "https://api-inference.huggingface.co/models/jy46604790/Fake-News-Bert-Detect"
     
     headers = {}
+    # Retrieve optional HF Token from environment variables
     hf_token = os.environ.get("HF_TOKEN")
     if hf_token:
         headers["Authorization"] = f"Bearer {hf_token}"
@@ -39,15 +41,20 @@ def predict_news(news: NewsInput):
             
         data = response.json()
         
+        # Hugging Face inference pipeline response format is typically nested:
+        # [[{"label": "LABEL_0", "score": 0.95}, {"label": "LABEL_1", "score": 0.05}]]
         if not data or not isinstance(data, list) or not isinstance(data[0], list):
             raise HTTPException(status_code=502, detail="Invalid response structure from Hugging Face Inference API.")
             
         predictions = data[0]
+        
+        # Find the label dictionary with the highest score
         top_prediction = max(predictions, key=lambda x: x.get('score', 0))
         
         label = top_prediction.get('label')
         confidence = top_prediction.get('score', 0) * 100
         
+        # LABEL_0 is Fake News, LABEL_1 is Real News
         if label == "LABEL_0":
             result = "Fake News"
         else:
@@ -61,7 +68,3 @@ def predict_news(news: NewsInput):
         raise HTTPException(status_code=504, detail="The AI model took too long to respond. Please try again.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Proxy Error: {str(e)}")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)

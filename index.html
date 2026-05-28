@@ -901,8 +901,12 @@
     showScanning();
 
     try {
-      // Point the UI to YOUR local FastAPI server
-      const response = await fetch('http://127.0.0.1:8000/predict', {
+      // Point to local FastAPI server when running locally, otherwise use relative Vercel route
+      const apiEndpoint = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.protocol === "file:"
+        ? "http://127.0.0.1:8000/predict"
+        : "/api/predict";
+
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: content })
